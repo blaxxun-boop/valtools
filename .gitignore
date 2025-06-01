@@ -1,0 +1,25 @@
+# Configuration
+config/config.php
+.env
+
+# User data
+uploads/
+logs/
+cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Composer
+vendor/

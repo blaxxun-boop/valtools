@@ -1,0 +1,719 @@
+/* Updated Valtools Valheim-Themed UI */
+:root {
+    --color-header-bg_tsblue: #375a7f;
+    --color-table-header-bg_tsblue: #28415b;
+    --color-border: #444;
+    --color-border-bottom: #333;
+    --color-comment-tsblue: #3498db;
+    --color-button-blue-hover: #005a87;
+    --color-bg-dark: #1e1e1e;
+    --color-panel: #2a2a2a;
+    --color-accent: #3498db;
+    --color-accent-hover: #3498db;
+    --color-accent-hover2: #00bc8c;
+    --color-incompatible: #bf3f3f;
+    --color-unknown: #d4af37;
+    --color-compatible: #4caf50;
+    --color-text-light: #f0f0f0;
+    --color-text-muted: #cccccc;
+    --color-success: #28a745;
+    --color-error: #dc3545;
+    --color-comment-pending: #ff6600;
+    --color-comment-approved: #008000;
+    --border-radius: 10px;
+}
+
+body {
+    margin: 0;
+    padding-top: 60px;
+    background-color: var(--color-bg-dark);
+    color: var(--color-text-light);
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    justify-content: center;
+}
+
+header {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 60px;
+    background: var(--color-header-bg_tsblue);
+    border-bottom: 2px solid var(--color-border-bottom);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 1000;
+}
+
+header h1 {
+    color: white;
+    font-size: 20px;
+    margin: 0;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+nav .nav-link {
+    color: white;
+    font-weight: bold;
+    background: transparent;
+    text-decoration: none;
+    cursor: pointer;
+    padding-left: .5em;
+    padding-right: .5em;
+}
+
+nav .nav-link:hover {
+    color: var(--color-accent-hover2);
+}
+
+a {
+    color: var(--color-accent-hover2);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--color-accent-hover2);
+    text-decoration: underline;
+}
+
+nav .navlink-dropdown::after {
+    display: inline-block;
+    margin-left: .255em;
+    vertical-align: .255em;
+    content: "";
+    border-top: .3em solid;
+    border-right: .3em solid transparent;
+    border-bottom: 0;
+    border-left: .3em solid transparent;
+}
+
+nav .nav-username {
+    color: var(--color-text-muted);
+    font-weight: normal;
+    margin-left: 10px;
+    margin-right: -5px;
+    font-size: 0.95em;
+}
+
+nav .nav-logout {
+    margin-left: 10px;
+    color: white;
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.redirect-link {
+    color: var(--color-text-muted);
+}
+
+.redirect-link:hover {
+    color: var(--color-accent-hover2);
+}
+
+#mod-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    align-items: center;
+    margin-bottom: 1em;
+    padding: 0 2em;
+}
+
+#mod-filters input,
+#mod-filters select {
+    background-color: var(--color-bg-dark);
+    color: white;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+}
+
+input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]) {
+    width: 36em;
+    height: 25px;
+    padding: 5px;
+    font-family: 'Open Sans', sans-serif;
+    border-radius: 5px;
+    border: none;
+    color: #b9b9b9;
+    border-bottom: 1px solid var(--color-accent-hover, #9867d4);
+    background-color: #111518;
+}
+
+#file-upload-button::file-selector-button {
+    background-color: var(--color-accent);
+    color: black;
+    border: none;
+    padding: 0.6em 1.5em;
+    font-size: 1em;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+/* hover state */
+#file-upload-button::file-selector-button:hover {
+    background-color: var(--color-panel);
+}
+
+
+.container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1.5em;
+    max-width: 100%;
+    padding: 2em;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.card {
+    background-color: var(--color-panel);
+    border-radius: var(--border-radius);
+    padding: 1.5em;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s ease;
+}
+
+/*.card:hover {
+    transform: scale(1.01);
+}*/
+
+.card h2 {
+    margin-top: 0;
+    /*margin: 0;*/
+    font-size: 1.4em;
+    color: var(--color-text-light);
+}
+
+.card .author {
+    font-size: 0.9em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5em;
+}
+
+.card .status {
+    margin: 0.5em 0;
+    padding: 0.3em 1em;
+    border-radius: 20px;
+    font-weight: bold;
+    width: fit-content;
+    color: white;
+}
+
+.status.compatible {
+    background-color: var(--color-compatible);
+}
+
+.status.incompatible {
+    background-color: var(--color-incompatible);
+}
+
+.status.unknown {
+    background-color: var(--color-unknown);
+}
+
+.card .tags {
+    margin-top: 0.5em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
+}
+
+.card .tag {
+    background-color: var(--color-border);
+    border-radius: 6px;
+    padding: 0.2em 0.7em;
+    font-size: 0.8em;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.card p {
+    font-style: italic;
+    font-size: 0.95em;
+    color: var(--color-text-muted);
+}
+
+.card img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.card .tag:hover {
+    background-color: var(--color-accent);
+    color: black;
+}
+
+.view-toggle {
+    text-align: center;
+    margin-bottom: 1em;
+}
+
+.view-toggle button {
+    background-color: var(--color-accent);
+    border: none;
+    padding: 0.5em 1em;
+    margin: 0 0.5em;
+    font-weight: bold;
+    color: black;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.view-toggle button:hover {
+    background-color: var(--color-button-blue-hover);
+}
+
+.card-carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 1em;
+    padding: 1em 2em;
+    scroll-snap-type: x mandatory;
+}
+
+.card-carousel .card {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+    min-width: 320px;
+    max-width: 360px;
+}
+
+footer {
+    text-align: center;
+    padding: 1em;
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border-bottom);
+    margin-top: 4em;
+}
+
+/* Table View Support */
+.table-view table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2em;
+}
+
+.table-view td {
+    padding: 0.8em;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border-bottom);
+    color: var(--color-text-light);
+}
+
+.table-view tr:nth-child(even) {
+    background-color: #2f2f2f;
+}
+
+.table-view th {
+    background-color: var(--color-table-header-bg_tsblue);
+    font-weight: bold;
+}
+
+/* Tag filter highlight */
+.tag.active {
+    background-color: var(--color-accent);
+    color: black;
+    font-weight: bold;
+}
+
+/* Bookmarkable filter utility */
+#mod-filters input:focus,
+#mod-filters select:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+}
+
+#mod-filters select,
+#mod-filters input {
+    background-color: #fff;
+    color: white;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+/* Error/403 Page Centered */
+.page-centered {
+    max-width: 480px;
+    margin: 5em auto;
+    background-color: var(--color-panel);
+    padding: 2em;
+    border-radius: var(--border-radius);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    border-bottom: 3px solid var(--color-accent-hover, #9867d4)
+}
+
+.page-centered h1 {
+    font-size: 1.6em;
+    margin-bottom: 1em;
+    color: var(--color-text-light);
+}
+
+.page-centered p {
+    font-size: 1.1em;
+    color: var(--color-text-muted);
+    margin-bottom: 2em;
+}
+
+.page-centered .button {
+    background-color: var(--color-accent);
+    border: none;
+    color: black;
+    padding: 0.6em 1.5em;
+    font-size: 1em;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    font-weight: bold;
+    display: inline-block;
+    transition: background-color 0.2s;
+}
+
+.page-centered .button:hover {
+    background-color: var(--color-accent-hover);
+}
+
+/* manage users page */
+.bigcard {
+    background-color: var(--color-panel);
+    padding: 1.5em 2em;
+    margin: 2em;
+    border-radius: var(--border-radius);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.bigcard h2 {
+    margin-top: 0;
+    color: var(--color-text-light);
+    font-size: 1.3em;
+}
+
+.bigcard form label {
+    display: block;
+    margin-top: 1em;
+    font-weight: bold;
+    color: var(--color-text-light);
+}
+
+.bigcard input[type="text"],
+.bigcard select {
+    width: 100%;
+    padding: 0.5em;
+    background-color: var(--color-bg-dark);
+    color: white;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    margin-top: 0.3em;
+}
+
+.bigcard input[type="submit"] {
+    margin-top: 1em;
+    padding: 0.6em 1.5em;
+    background: var(--color-accent);
+    color: black;
+    font-weight: bold;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.bigcard input[type="submit"]:hover {
+    background-color: var(--color-accent-hover);
+}
+
+.bigcard .hinttext {
+    margin-top: 0.5em;
+    font-size: 0.9em;
+    color: var(--color-text-muted);
+}
+
+.success {
+    background: var(--color-success);
+    color: black;
+    padding: 1em;
+    border-radius: var(--border-radius);
+    margin: 1em 2em;
+    font-weight: bold;
+}
+
+.error {
+    background: var(--color-error);
+    color: white;
+    padding: 1em;
+    border-radius: var(--border-radius);
+    margin: 1em 2em;
+    font-weight: bold;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1em;
+    font-size: 0.95em;
+}
+
+table th,
+table td {
+    border-bottom: 1px solid var(--color-border-bottom);
+    padding: 0.8em;
+    color: var(--color-text-light);
+}
+
+table th {
+    background-color: var(--color-border-bottom);
+    text-align: left;
+}
+
+table tr:nth-child(even) {
+    background-color: var(--color-panel);
+}
+
+.button {
+    background-color: var(--color-accent);
+    border: none;
+    color: black;
+    font-weight: bold;
+    padding: 0.4em 1em;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.button:hover {
+    background-color: var(--color-accent-hover);
+}
+
+.loginbutton2 {
+    margin: auto auto 15px;
+    display: block;
+    padding: .5em 15%;
+    background: linear-gradient(126deg, var(--color-button-blue-hover), var(--color-accent));
+    border: 1px solid var(--color-button-blue-hover);
+    border-radius: 5px;
+    font-size: 1.2em;
+    color: #edeef3 !important;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none !important;
+    cursor: pointer;
+    font-family: Inter, sans-serif;
+}
+
+.hinttext {
+    font-size: 0.85em;
+    color: var(--color-text-muted);
+    margin-top: 0.5em;
+    line-height: 1.4;
+}
+
+/* Comments */
+.comment-form {
+    display: none;
+    margin-top: 10px;
+    padding: 10px;
+    background-color: var(--color-border);
+    border-radius: 5px;
+}
+
+.comment-form textarea {
+    width: 100%;
+    min-height: 80px;
+    margin: 5px 0;
+}
+
+.comment-pending .comment-text {
+    color: var(--color-comment-pending);
+    font-style: italic;
+}
+
+.comment-approved .comment-text {
+    color: var(--color-comment-approved);
+}
+
+.comment-toggle {
+    background: var(--color-comment-tsblue, #007cba);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.comment-toggle:hover {
+    background: var(--color-button-blue-hover, #005a87);
+}
+
+/* Card/List view toggle */
+.view-toggle-button {
+    margin-left: auto;
+    background-color: var(--color-accent, #8fbf3f);
+    border: none;
+    color: white;
+    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9em;
+}
+
+.view-toggle-button:hover {
+    background-color: var(--color-button-blue-hover, #a3d14c);
+}
+
+/* Profile Dropdown Styles */
+.profile-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-dropdown::after {
+    display: inline-block;
+    margin-left: .255em;
+    vertical-align: .255em;
+    content: "";
+    border-top: .3em solid;
+    border-right: .3em solid transparent;
+    border-bottom: 0;
+    border-left: .3em solid transparent;
+}
+
+.profile-avatar {
+    transition: opacity 0.2s ease;
+    vertical-align: middle;
+}
+
+.profile-avatar:hover {
+    opacity: 0.8;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    width: max-content;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.dropdown-content.show {
+    display: block;
+}
+
+.dropdown-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #ddd;
+    background-color: var(--color-panel, #f1f1f1);
+    font-weight: bold;
+    border-radius: 4px 4px 0 0;
+}
+
+.dropdown-item {
+    color: var(--color-text-light, #fff);
+    background-color: var(--color-panel, #f1f1f1);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: var(--color-header-bg_tsblue, #f1f1f1);
+}
+
+.dropdown-item:last-child {
+    border-radius: 0 0 4px 4px;
+}
+
+.autocomplete-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.autocomplete-suggestion {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-light);
+}
+
+.autocomplete-suggestion:hover,
+.autocomplete-suggestion.selected {
+    background: var(--color-header-bg_tsblue);
+}
+
+.incompatibility-section {
+    margin-top: 15px;
+    padding: 15px;
+    background: var(--color-panel);
+    border-radius: 5px;
+    border-left: 4px solid var(--color-unknown);
+}
+
+.incompatibility-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.incompatibility-full {
+    background: var(--color-incompatible);
+    color: white;
+}
+
+.incompatibility-partial {
+    background: var(--color-unknown);
+    color: black;
+}
+
+.incompatibility-info {
+    margin-top: 8px;
+    font-style: italic;
+    color: var(--color-text-muted);
+}

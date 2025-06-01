@@ -1,0 +1,8 @@
+{
+    "require": {
+        "team-reflex/discord-php": "^10.10.6",
+        "revolt/event-loop-adapter-react": "^1.1.1",
+        "amphp/http-server": "^3",
+        "ext-gd": "*"
+    }
+}

@@ -1,0 +1,174 @@
+header { position: fixed; left: 0; top: 0; right: 0; min-height: 40px; background: #0097cb; border-bottom: 1px solid rgba(0,0,0,.1); z-index: 5000; }
+
+nav { padding-right: 15px; }
+
+nav > * { display: inline-flex; vertical-align: middle; min-height: 40px; box-sizing: border-box; color: white; text-align: center; padding: 2px 12px 0 12px; line-height: 38px; font-weight: bold; }
+#logo { align-self: center; margin-right: .5em; }
+
+html { font-family: 'Lato', sans-serif; font-size: 14px; height: 100%; }
+
+label { display: block; }
+.pagination label { display: inline; }
+.pagination { text-align: right; }
+body { display: table; width: 100%; padding-top: 40px; margin: 0; min-height: calc(100% - 40px); }
+main { border-collapse: collapse; margin: 35px; }
+
+h1 { font-size: 26px; padding: 0 15px; line-height: 46px; margin: 0; font-style: italic; color: #999; font-family: 'Open Sans', sans-serif; font-weight: 300; }
+
+.page-centered { margin-top: 75px; width: max-content; margin-left: auto; margin-right: auto; border: 3px solid #0097cb; padding: 2em; border-radius: 10px; }
+.page-centered h1 { font-size: 1.2em; text-align: center; padding: .5em; margin-bottom: .5em; }
+.page-centered label { padding-bottom: .3em; text-align: right; }
+.page-centered input[type="submit"], .button { margin: auto; display: block; padding: .5em 15%; background: #44b6fe; border: 1px solid #444; border-radius: 100px; font-size: 1.2em; color: white !important; font-weight: bold; letter-spacing: 0.08em; text-align: center; text-decoration: none !important; cursor: pointer; }
+.page-centered input[type="submit"] { margin-top: 0.4em; }
+.button { display: table; padding: .5em 25px; }
+
+table { border-collapse: collapse; width: calc(100% + 30px); margin: 10px -15px; }
+
+td:first-of-type, th:first-of-type { padding-left: 15px; }
+td:last-of-type, th:last-of-type { padding-right: 15px; }
+td, th { line-height: 30px; padding: 0 8px; }
+td { border-top: 1px solid rgba(0,0,0,.1); border-bottom: 1px solid rgba(0,0,0,.1); }
+
+table tr:nth-of-type(odd of :not([style*="none"])) td { background-color: #fafafa; }
+table input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]) { width: 100%; }
+
+.action-required { background: #cc5; color: black; padding: .3em; line-height: 1em; min-width: 1em; text-align: center; display: inline-block; border-radius: 1em; }
+.userdataupdate { display: flex; gap: .5em; }
+
+.bigcard { margin: 0 7px; border: 1px solid rgba(0,0,0,.1); border-bottom-color: rgba(0, 0, 0, 0.1); border-bottom-style: solid; border-bottom-width: 1px; border-bottom: 1px solid rgba(0,0,0,.2); border-radius: 2px; box-sizing: border-box; padding: 15px; background-color: #fff; line-height: 20px; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,.05); vertical-align: top; }
+.bigcard:not(table) { display: inline-block; }
+
+footer { position: relative; text-align: left; border-top: 1px solid rgba(0,0,0,.1); background: #f0f0f0; color: #444; box-shadow: 0 3px 3px -3px rgba(0,0,0,.1) inset; font-weight: bold; font-size: 12px; height: 27px; line-height: 28px; display: table-row; }
+#footer-time { text-align: right; margin-right: 105px; }
+
+pre { background: #AAA; padding: 4px; border: 1px solid #444; }
+.pre-wrap { white-space: normal; }
+
+th { text-align: left; }
+
+ol { counter-reset: item }
+ol>li { display: block }
+ol>li:before { content: counters(item, ".") ". "; counter-increment: item }
+
+.hinttext { font-size: small; color:grey }
+
+input:not([type="submit"]):not([type="checkbox"]) { width: 36em; }
+
+.logindiv { height: .4em; }
+label.loginlabel { text-align: center; }
+.registerhelptext { text-align: center; margin-top: 2em; }
+
+.tabselect { display: flex; }
+#client:target ~ * [href="#client"], #client:not(:target) ~ * [href="#server"] { border-bottom-color: #0097cbaa; font-weight: bold; }
+.tabselect a:hover { border-bottom-color: #0097cb !important; }
+.tabselect a { width: 100%; text-align: center; text-decoration: none !important; color: #3373EE; border-bottom: 2px solid #0097cb44; margin: 0 3em; padding-bottom: .5em; font-size: 1.2em; }
+
+.blankspace { height: 1em; }
+
+.searchbar { float: right; }
+
+.error { color: darkred; margin: 0.3em 0; }
+#mainpage .error, #mainpage .success { text-align: center; margin-bottom: 2em; }
+
+#themeslabel { float: right; display: inline-block; }
+#timezonelabel { float: right; display: inline-block; }
+
+.blockdisplay { display: block; }
+
+.sortlink { text-decoration: none !important; }
+
+.autocomplete-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.autocomplete-suggestion {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    color: #333;
+}
+
+.autocomplete-suggestion:hover,
+.autocomplete-suggestion.selected {
+    background: #0097cb;
+    color: white;
+}
+
+.incompatibility-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.incompatibility-full {
+    background: #dc3545;
+    color: white;
+}
+
+.incompatibility-partial {
+    background: #ffc107;
+    color: black;
+}
+
+.incompatibility-info {
+    margin-top: 8px;
+    font-style: italic;
+    color: #666;
+}
+
+.author-filter-container {
+    position: relative;
+    display: inline-block;
+}
+
+.author-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.author-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    color: #333;
+    transition: background-color 0.2s;
+}
+
+.author-option:hover {
+    background: #0097cb;
+    color: white;
+}
+
+.author-option:last-child {
+    border-bottom: none;
+}
