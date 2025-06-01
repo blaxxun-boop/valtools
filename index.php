@@ -545,7 +545,7 @@ catch (PDOException $e) {
         <input type="hidden" name="xsrf" value="<?= $_SESSION["xsrf"] ?>">
         <input type="hidden" name="mod_author" value="">
         <input type="hidden" name="mod_name" value="">
-        <textarea name="comment" placeholder="Enter your comment for this mod..." required></textarea>
+        <textarea name="comment" placeholder="Enter your comment for this mod.&#10;Please only report objective things, not your personal opinion of this mod." required></textarea>
 
         <div style="margin-top: 10px;">
             <label>
@@ -575,7 +575,7 @@ catch (PDOException $e) {
 
         <div style="margin-top: 10px;">
             <button type="submit" name="submit_comment">Submit Comment</button>
-            <button type="button" onclick="document.commen_form.style.display = 'none'">Cancel</button>
+            <button type="button" onclick="document.comment_form.style.display = 'none'">Cancel</button>
         </div>
     </form>
     <div id="mod-filters" style="display: flex; flex-wrap: wrap; gap: 1em; align-items: center; margin-bottom: 1em;">
@@ -856,7 +856,7 @@ catch (PDOException $e) {
                                         <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?></div>
-	                        <?php if (hasPermission("modcomments")): ?>
+	                        <?php if (hasPermission("addcomments")): ?>
                                 <button class="comment-toggle" onclick="toggleCommentForm(this)">Add Comment</button>
 
                             <?php endif; ?>
