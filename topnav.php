@@ -13,6 +13,7 @@
                 <a href="#" role="button" id="debugMenu" class="nav-link navlink-dropdown dropdown-toggle" onclick="toggleDropdown('debugMenuDropdown')">Debug Tools</a>
                 <div class="dropdown-content" id="debugMenuDropdown" style="position: absolute; top: 100%; left: 0; z-index: 1000;">
                     <a class="dropdown-item" href="parselog.php">Log Parser</a>
+                    <a class="dropdown-item" href="https://valheim-map.world/">Valheim World Generator<br>& Seed Finder</a>
                 </div>
             </div>
         </li>
@@ -40,6 +41,7 @@
                         <a class="dropdown-item" href="comment_moderation.php">Comment Moderation</a>
                         <a class="dropdown-item" href="manageusers.php">Manage Users</a>
                         <a class="dropdown-item" href="clear-wiki-cache.php">Clear Wiki Cache</a>
+                        <a class="dropdown-item" href="fetch.php">Fetch Mods</a>
                     </div>
                 </div>
             </li>

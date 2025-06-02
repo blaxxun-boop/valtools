@@ -281,7 +281,7 @@ $recent_activity = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="user-stats">
                         <span class="stat">📝 <?php echo $user_profile['total_comments']; ?> reviews</span>
                         <span class="stat">✅ <?php echo $user_profile['approved_comments']; ?> approved</span>
-                        <span class="stat">📊 <?php echo $user_profile['total_comments'] > 0 ? round(($user_profile['approved_comments'] / $user_profile['total_comments']) * 100) : 0; ?>% approval rate</span>
+                        <span class="stat">📊 <?php echo $user_profile['total_comments'] > 0 ? round(($user_profile['total_comments'] - $user_profile['approved_comments'])) : 0; ?> pending</span>
                     </div>
                 </div>
             </div>

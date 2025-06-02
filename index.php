@@ -140,6 +140,9 @@ try {
 			m.name, 
 			m.version, 
 			m.updated,
+			m.deprecated,
+			m.packageurl,
+			m.author_modpage,
 			GROUP_CONCAT(
 				CONCAT(
 					c.id, '\t',
@@ -171,6 +174,9 @@ try {
 			m.name, 
 			m.version, 
 			m.updated,
+			m.deprecated,
+			m.packageurl,
+			m.author_modpage,
 			GROUP_CONCAT(
 				CONCAT(
 					COALESCE(c.id, ''), '\t',
@@ -204,7 +210,10 @@ try {
             'name' => $row['name'],
             'version' => $row['version'],
             'updated' => $row['updated'],
-            'comments' => []
+            'comments' => [],
+            'deprecated' => $row['deprecated'],
+            'packageurl' => $row['packageurl'],
+            'author_modpage' => $row['author_modpage'],
         ];
 
         if (!empty($row['comments_data'])) {
@@ -284,40 +293,35 @@ catch (PDOException $e) {
         const query = document.getElementById("modSearch").value.toLowerCase();
         const status = document.getElementById("filterCompatibility").value;
         const author = document.getElementById("filterAuthor").value;
+        const showDeprecated = document.getElementById("showDeprecatedFilter").checked;
 
         const rows = document.querySelectorAll("#tableView tbody tr");
-        const cards = document.querySelectorAll("#cardView .card");
 
-        function matches(modName, modAuthor, modStatus) {
+        function matches(modName, modAuthor, modStatus, isDeprecated) {
             return (
                 (!query || modName.toLowerCase().includes(query)) &&
                 (!status || modStatus === status) &&
-                (!author || modAuthor === author)
+                (!author || modAuthor === author) &&
+                (showDeprecated || !isDeprecated)
             );
         }
 
         rows.forEach(row => {
-            const modName = row.children[1]?.textContent || '';
-            const modAuthor = row.children[0]?.textContent || '';
+            const modName = row.children[1]?.innerText || '';
+            const modAuthor = row.children[0]?.innerText || '';
             const statusSpan = row.querySelector(".comment-approved, .comment-pending");
             const modStatus = row.querySelector(".status")?.classList.contains('compatible') ? 'compatible' :
                 row.querySelector(".status")?.classList.contains('incompatible') ? 'incompatible' : 'unknown';
+            const deprecatedBadge = row.querySelector(".incompatibility-badge");
+            const isDeprecated = deprecatedBadge && deprecatedBadge.textContent.trim() === "Deprecated";
 
-            row.style.display = matches(modName, modAuthor, modStatus) ? '' : 'none';
-        });
-
-        cards.forEach(card => {
-            const modName = card.querySelector("h2")?.textContent || '';
-            const modAuthor = card.querySelector(".author")?.textContent || '';
-            const statusDiv = card.querySelector(".status");
-            const modStatus = statusDiv?.classList.contains("compatible") ? "compatible" :
-                statusDiv?.classList.contains("incompatible") ? "incompatible" : "unknown";
-
-            card.style.display = matches(modName, modAuthor, modStatus) ? 'block' : 'none';
+            row.style.display = matches(modName, modAuthor, modStatus, isDeprecated) ? '' : 'none';
         });
     }
 
+
     document.addEventListener("DOMContentLoaded", () => {
+        toggleDeprecatedFilter(false);
         document.getElementById("modSearch").addEventListener("input", filterMods);
         document.getElementById("filterCompatibility").addEventListener("change", filterMods);
         document.getElementById("filterAuthor").addEventListener("change", filterMods);
@@ -332,6 +336,41 @@ catch (PDOException $e) {
         }
         window.location.href = url.toString();
     }
+
+    function toggleDeprecatedFilter(checked) {
+        const rows = document.querySelectorAll("#tableView tbody tr");
+        const cards = document.querySelectorAll("#cardView .card");
+
+        rows.forEach(row => {
+            const deprecatedBadge = row.querySelector(".incompatibility-badge");
+            const isDeprecated = deprecatedBadge && deprecatedBadge.textContent.trim() === "Deprecated";
+
+            if (isDeprecated && !checked) {
+                row.style.display = 'none';
+            } else if (isDeprecated && checked) {
+                // Just show it, don't call filterMods for each row
+                row.style.display = '';
+            }
+        });
+
+        cards.forEach(card => {
+            const deprecatedBadge = card.querySelector(".incompatibility-badge");
+            const isDeprecated = deprecatedBadge && deprecatedBadge.textContent.trim() === "Deprecated";
+
+            if (isDeprecated && !checked) {
+                card.style.display = 'none';
+            } else if (isDeprecated && checked) {
+                // Just show it, don't call filterMods for each card
+                card.style.display = 'block';
+            }
+        });
+
+        // Call filterMods once at the end to apply all other filters
+        if (checked) {
+            filterMods();
+        }
+    }
+
 
     // Autocomplete functionality
     function setupAutocomplete(inputId) {
@@ -545,7 +584,8 @@ catch (PDOException $e) {
         <input type="hidden" name="xsrf" value="<?= $_SESSION["xsrf"] ?>">
         <input type="hidden" name="mod_author" value="">
         <input type="hidden" name="mod_name" value="">
-        <textarea name="comment" placeholder="Enter your comment for this mod.&#10;Please only report objective things, not your personal opinion of this mod." required></textarea>
+        <textarea name="comment" placeholder="Enter your comment for this mod.
+Please only report objective things, not your personal opinion of this mod." required></textarea>
 
         <div style="margin-top: 10px;">
             <label>
@@ -622,6 +662,14 @@ catch (PDOException $e) {
                 Show Pending Comments Only
             </label>
         <?php endif; ?>
+
+        <!-- Show Deprecated Mods Filter -->
+        <label style="display: flex; align-items: center; gap: 0.5em; color: #fff;">
+            <input type="checkbox" id="showDeprecatedFilter"
+                   onchange="toggleDeprecatedFilter(this.checked)"
+                   style="accent-color: #007acc;">
+            Show Deprecated Mods
+        </label>
 
     </div>
 
@@ -772,8 +820,13 @@ catch (PDOException $e) {
                 <tbody>
                 <?php foreach ($mods as $index => $mod): ?>
                     <tr>
-                        <td class="mod_author"><?= htmlspecialchars($mod['author']) ?></td>
-                        <td class="mod_name"><?= htmlspecialchars($mod['name']) ?></td>
+                        <td class="mod_author"><a href="<?=  $mod['author_modpage'] ?>" target="_blank"><?= htmlspecialchars($mod['author']) ?></a></td>
+                        <!--<td class="mod_name"><?php /*= htmlspecialchars($mod['name']) */?></td>-->
+                        <td class="mod_name"><a href="<?= $mod['packageurl'] ?>" target="_blank"><?= htmlspecialchars($mod['name']) ?></a>
+                            <?php if ($mod['deprecated'] == 1): ?>
+                                <span class="incompatibility-badge incompatibility-full">Deprecated</span>
+                            <?php endif; ?>
+                        </td>
                         <!--<td class="mod_name">
                             <a href="modshowcase.php?author=<?php /*= urlencode($mod['author']) */?>&name=<?php /*= urlencode($mod['name']) */?>">
                                 <?php /*= htmlspecialchars($mod['name']) */?>
@@ -789,7 +842,7 @@ catch (PDOException $e) {
                                 <?= htmlspecialchars(substr($comment['comment'], 0, 100)) ?>
                                 <?= !$comment['approved'] ? '<em>(Pending)</em>' : '' ?>
                             </span>
-	                                    <?php if (hasPermission("modcomments")): ?>
+                                        <?php if (hasPermission("modcomments")): ?>
                                             <form method="POST" style="display: inline; margin-left: 10px;">
                                                 <input type="hidden" name="xsrf" value="<?= $_SESSION["xsrf"] ?>">
                                                 <input type="hidden" name="comment_id" value="<?= $comment['id'] ?>">
@@ -856,7 +909,7 @@ catch (PDOException $e) {
                                         <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?></div>
-	                        <?php if (hasPermission("addcomments")): ?>
+                            <?php if (hasPermission("addcomments")): ?>
                                 <button class="comment-toggle" onclick="toggleCommentForm(this)">Add Comment</button>
 
                             <?php endif; ?>

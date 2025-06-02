@@ -118,7 +118,6 @@ class ValheimWikiRenderer {
             ['name' => 'Home', 'title' => '🏠 Home'],
 
             // General information
-            ['name' => 'Mods', 'title' => '📦 Mods'],
             ['name' => 'Modding-Discords', 'title' => '💬 Modding Discords'],
             ['name' => 'Xbox-Compatible-Mods', 'title' => '🎮 Xbox Compatible Mods'],
 
@@ -128,30 +127,29 @@ class ValheimWikiRenderer {
 
             // Getting Started section
             ['name' => 'Getting-Started-Creating-Mods', 'title' => '🚀 Getting Started Creating Mods'],
-            ['name' => 'Set-Up-Mod-Development-Environment', 'title' => '⚙️ Set Up Mod Development Environment'],
+            ['name' => 'Setting-Up-Mod-Development-Environment', 'title' => '⚙️ Setting Up Mod Development Environment'],
             ['name' => 'Creating-Your-First-Mod', 'title' => '🔨 Creating Your First Mod'],
             ['name' => 'Best-Practices', 'title' => '✅ Best Practices'],
-            ['name' => 'Unity-Project-Guide', 'title' => '🎯 Unity Project Guide'],
+            ['name' => 'Valheim-Unity-Project-Guide', 'title' => '🎯 Unity Project Guide'],
 
             // Intermediate/Advanced section
-            ['name' => 'Advanced-Practices-&-Tools', 'title' => '🔧 Advanced Practices & Tools'],
-            ['name' => 'Attaching-Weapons-&-Armor', 'title' => '⚔️ Attaching Weapons & Armor'],
+            ['name' => 'Advanced-Practices-and-Tools', 'title' => '🔧 Advanced Practices and Tools'],
+            ['name' => 'Attaching-Weapons-and-Armor', 'title' => '⚔️ Attaching Weapons and Armor'],
             ['name' => 'Creating-Dungeons', 'title' => '🏰 Creating Dungeons'],
             ['name' => 'Creating-Locations', 'title' => '🗺️ Creating Locations'],
             ['name' => 'Custom-Sounds', 'title' => '🔊 Custom Sounds'],
-            ['name' => 'Debugging-Setup', 'title' => '🐛 Debugging Setup'],
+            ['name' => 'Debugging-Plugins-via-IDE', 'title' => '🐛 Debugging Setup'],
             ['name' => 'Replacing-Valheim-Animations', 'title' => '🎭 Replacing Valheim Animations'],
             ['name' => 'Profiling-Performance', 'title' => '📊 Profiling Performance'],
 
             // Game Code section
-            ['name' => 'Event-System', 'title' => '📡 Event System'],
+            ['name' => 'Valheim-Event-System', 'title' => '📡 Event System'],
             ['name' => 'Item-Variants', 'title' => '🎨 Item Variants'],
-            ['name' => 'Keybinding-Strings', 'title' => '⌨️ Keybinding Strings'],
-            ['name' => 'Spawning-System', 'title' => '🌱 Spawning System'],
+            ['name' => 'Key-Binding-Strings', 'title' => '⌨️ Keybinding Strings'],
+            ['name' => 'Spawning', 'title' => '🌱 Spawning System'],
             ['name' => 'Snappoints', 'title' => '📐 Snappoints'],
 
             // RPC section
-            ['name' => 'RPC', 'title' => '🔗 RPC'],
             ['name' => 'RPC-Introduction-and-Example', 'title' => '📖 RPC Introduction and Example'],
             ['name' => 'RPC-System-Reference-Sheet', 'title' => '📋 RPC System Reference Sheet'],
             ['name' => 'RPC-Version-Handshaking', 'title' => '🤝 RPC Version Handshaking'],
@@ -163,9 +161,8 @@ class ValheimWikiRenderer {
             ['name' => 'ZDO-Hashes', 'title' => '🔢 ZDO Hashes'],
 
             // MonoBehaviors section
-            ['name' => 'MonoBehaviors', 'title' => '🧩 MonoBehaviors'],
-            ['name' => 'Custom-Monoscript-Repo-Loader', 'title' => '📦 Custom Monoscript Repo Loader'],
-            ['name' => 'Using-Custom-Monoscripts-from-Assets', 'title' => '🎯 Using Custom Monoscripts from Assets'],
+            ['name' => 'MonoBehaviourRepositoryLoader', 'title' => '📦 Custom Monoscript Repo Loader'],
+            ['name' => 'How-to-use-MonoBehaviors-from-Paid-AssetBundles-with-Valheim', 'title' => '💰 Using Custom Monoscripts from Assets'],
         ];
     }
 
@@ -337,9 +334,36 @@ foreach ($pages as $page) {
             background: #1a1a1a;
             border-radius: 8px;
             padding: 1.5rem;
-            height: fit-content;
+            height: calc(100vh - 120px); /* Fixed height based on viewport */
             position: sticky;
             top: 80px;
+            overflow-y: auto; /* Enable vertical scrolling */
+            overflow-x: hidden; /* Hide horizontal scrollbar */
+        }
+
+        /* Custom scrollbar styling for the sidebar */
+        .wiki-sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .wiki-sidebar::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 3px;
+        }
+
+        .wiki-sidebar::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 3px;
+        }
+
+        .wiki-sidebar::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
+        }
+
+        /* For Firefox */
+        .wiki-sidebar {
+            scrollbar-width: thin;
+            scrollbar-color: #4a4a4a #2a2a2a;
         }
 
         .wiki-sidebar h3 {
@@ -611,14 +635,14 @@ foreach ($pages as $page) {
                 <?php
                 $sections = [
                     'Main' => ['Home'],
-                    'General' => ['Mods', 'Modding-Discords', 'Xbox-Compatible-Mods'],
+                    'General' => ['Modding-Discords', 'Xbox-Compatible-Mods'],
                     'Troubleshooting' => ['Server-Troubleshooting', 'Client-Troubleshooting'],
-                    'Getting Started' => ['Getting-Started-Creating-Mods', 'Set-Up-Mod-Development-Environment', 'Creating-Your-First-Mod', 'Best-Practices', 'Unity-Project-Guide'],
-                    'Advanced' => ['Advanced-Practices-&-Tools', 'Attaching-Weapons-&-Armor', 'Creating-Dungeons', 'Creating-Locations', 'Custom-Sounds', 'Debugging-Setup', 'Replacing-Valheim-Animations', 'Profiling-Performance'],
-                    'Game Code' => ['Event-System', 'Item-Variants', 'Keybinding-Strings', 'Spawning-System', 'Snappoints'],
-                    'RPC' => ['RPC', 'RPC-Introduction-and-Example', 'RPC-System-Reference-Sheet', 'RPC-Version-Handshaking'],
+                    'Getting Started' => ['Getting-Started-Creating-Mods', 'Setting-Up-Mod-Development-Environment', 'Creating-Your-First-Mod', 'Best-Practices', 'Valheim-Unity-Project-Guide'],
+                    'Advanced' => ['Advanced-Practices-and-Tools', 'Attaching-Weapons-and-Armor', 'Creating-Dungeons', 'Creating-Locations', 'Custom-Sounds', 'Debugging-Plugins-via-IDE', 'Replacing-Valheim-Animations', 'Profiling-Performance'],
+                    'Game Code' => ['Valheim-Event-System', 'Item-Variants', 'Key-Binding-Strings', 'Spawning', 'Snappoints'],
+                    'RPC' => ['RPC-Introduction-and-Example', 'RPC-System-Reference-Sheet', 'RPC-Version-Handshaking'],
                     'References' => ['Layers', 'RPC-Method-Registrations', 'Wiki-Pages-&-Sites', 'ZDO-Hashes'],
-                    'MonoBehaviors' => ['MonoBehaviors', 'Custom-Monoscript-Repo-Loader', 'Using-Custom-Monoscripts-from-Assets']
+                    'MonoBehaviors' => ['MonoBehaviourRepositoryLoader', 'How-to-use-MonoBehaviors-from-Paid-AssetBundles-with-Valheim']
                 ];
 
                 foreach ($sections as $sectionName => $sectionPages) {
