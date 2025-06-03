@@ -389,7 +389,7 @@ foreach ($pages as $page) {
     <style>
         .wiki-container {
             display: grid;
-            grid-template-columns: 250px 1fr;
+            grid-template-columns: minmax(0,0.4fr) minmax(0, 2fr);
             gap: 2rem;
             margin: 0 auto;
         }
@@ -641,8 +641,34 @@ foreach ($pages as $page) {
             }
 
             .wiki-sidebar {
-                position: static;
+                position: static !important;
+                height: auto !important;
+                max-height: none !important;
                 margin-bottom: 1rem;
+                overflow-y: visible !important;
+                top: auto !important;
+            }
+
+            .wiki-sidebar h3 {
+                cursor: pointer;
+                position: relative;
+            }
+
+            .wiki-sidebar h3::after {
+                content: "▶";
+                float: right;
+            }
+
+            .wiki-nav {
+                display: none;
+            }
+
+            .wiki-sidebar.expanded .wiki-nav {
+                display: block;
+            }
+
+            .wiki-sidebar.expanded h3::after {
+                content: "▼";
             }
         }
 
