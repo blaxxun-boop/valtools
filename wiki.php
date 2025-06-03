@@ -111,63 +111,127 @@ class ValheimWikiRenderer {
         return $httpCode === 200;
     }
 
-    private function getAllKnownPages() {
-        // Actual wiki pages from the Valheim-Modding/Wiki in logical order
-        return [
-            // Main pages first
-            ['name' => 'Home', 'title' => '🏠 Home'],
-
-            // General information
-            ['name' => 'Modding-Discords', 'title' => '💬 Modding Discords'],
-            ['name' => 'Xbox-Compatible-Mods', 'title' => '🎮 Xbox Compatible Mods'],
-
-            // Troubleshooting section
-            ['name' => 'Server-Troubleshooting', 'title' => '🖥️ Server Troubleshooting'],
-            ['name' => 'Client-Troubleshooting', 'title' => '💻 Client Troubleshooting'],
-
-            // Getting Started section
-            ['name' => 'Getting-Started-Creating-Mods', 'title' => '🚀 Getting Started Creating Mods'],
-            ['name' => 'Setting-Up-Mod-Development-Environment', 'title' => '⚙️ Setting Up Mod Development Environment'],
-            ['name' => 'Creating-Your-First-Mod', 'title' => '🔨 Creating Your First Mod'],
-            ['name' => 'Best-Practices', 'title' => '✅ Best Practices'],
-            ['name' => 'Valheim-Unity-Project-Guide', 'title' => '🎯 Unity Project Guide'],
-
-            // Intermediate/Advanced section
-            ['name' => 'Advanced-Practices-and-Tools', 'title' => '🔧 Advanced Practices and Tools'],
-            ['name' => 'Attaching-Weapons-and-Armor', 'title' => '⚔️ Attaching Weapons and Armor'],
-            ['name' => 'Creating-Dungeons', 'title' => '🏰 Creating Dungeons'],
-            ['name' => 'Creating-Locations', 'title' => '🗺️ Creating Locations'],
-            ['name' => 'Custom-Sounds', 'title' => '🔊 Custom Sounds'],
-            ['name' => 'Debugging-Plugins-via-IDE', 'title' => '🐛 Debugging Setup'],
-            ['name' => 'Replacing-Valheim-Animations', 'title' => '🎭 Replacing Valheim Animations'],
-            ['name' => 'Profiling-Performance', 'title' => '📊 Profiling Performance'],
-
-            // Game Code section
-            ['name' => 'Valheim-Event-System', 'title' => '📡 Event System'],
-            ['name' => 'Item-Variants', 'title' => '🎨 Item Variants'],
-            ['name' => 'Key-Binding-Strings', 'title' => '⌨️ Keybinding Strings'],
-            ['name' => 'Spawning', 'title' => '🌱 Spawning System'],
-            ['name' => 'Snappoints', 'title' => '📐 Snappoints'],
-
-            // RPC section
-            ['name' => 'RPC-Introduction-and-Example', 'title' => '📖 RPC Introduction and Example'],
-            ['name' => 'RPC-System-Reference-Sheet', 'title' => '📋 RPC System Reference Sheet'],
-            ['name' => 'RPC-Version-Handshaking', 'title' => '🤝 RPC Version Handshaking'],
-
-            // References section
-            ['name' => 'Layers', 'title' => '📚 Layers'],
-            ['name' => 'RPC-Method-Registrations', 'title' => '📝 RPC Method Registrations'],
-            ['name' => 'Wiki-Pages-&-Sites', 'title' => '🌐 Wiki Pages & Sites'],
-            ['name' => 'ZDO-Hashes', 'title' => '🔢 ZDO Hashes'],
-
-            // MonoBehaviors section
-            ['name' => 'MonoBehaviourRepositoryLoader', 'title' => '📦 Custom Monoscript Repo Loader'],
-            ['name' => 'How-to-use-MonoBehaviors-from-Paid-AssetBundles-with-Valheim', 'title' => '💰 Using Custom Monoscripts from Assets'],
-        ];
+    private function getAllKnownPages(): array {
+        return $this->fetchAllPagesDynamically();
     }
 
-    private function formatPageTitle($pageName) {
-        return str_replace(['-', '_'], ' ', $pageName);
+    private function fetchAllPagesDynamically(): array {
+        $url = "https://github.com/{$this->owner}/{$this->repo}/wiki/_pages";
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Valtools-Wiki-Reader/1.0');
+        $html = curl_exec($ch);
+        curl_close($ch);
+
+        if (!$html) {
+            return []; // Fail gracefully
+        }
+
+        // Match links to individual wiki pages
+        preg_match_all('/href="\/' . preg_quote($this->owner) . '\/' . preg_quote($this->repo) . '\/wiki\/([^"]+)"/', $html, $matches);
+
+        $uniquePages = array_unique($matches[1] ?? []);
+        $pages = [];
+
+        foreach ($uniquePages as $page) {
+            $pageName = htmlspecialchars_decode($page);
+            $title = $this->prettifyTitleFromSlug($pageName);
+            $pages[] = [
+                'name' => $pageName,
+                'title' => $title,
+            ];
+        }
+
+        return $pages;
+    }
+
+    public function fetchSidebarSections(): array {
+        $cacheFile = $this->cacheDir . 'sidebar_sections.json';
+        if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $this->cacheTime) {
+            return json_decode(file_get_contents($cacheFile), true);
+        }
+
+        $url = "https://raw.githubusercontent.com/wiki/{$this->owner}/{$this->repo}/_Sidebar.md";
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Valtools-Wiki-Reader/1.0');
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $markdown = curl_exec($ch);
+        curl_close($ch);
+
+        if (!$markdown) return [];
+
+        $sections = $this->parseSidebarMarkdown($markdown);
+
+        file_put_contents($cacheFile, json_encode($sections));
+
+        return $sections;
+    }
+
+
+    private function parseSidebarMarkdown(string $markdown): array {
+        $lines = explode("\n", $markdown);
+        $sections = [];
+        $currentSection = null;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if (preg_match('/^#+\s*(.+)$/', $line, $matches)) {
+                $currentSection = $matches[1];
+                $sections[$currentSection] = [];
+            } elseif (preg_match('/\*\s*\[(.+?)\]\((.+?)\)/', $line, $matches)) {
+                $title = $matches[1];
+                $url = $matches[2];
+
+                // Extract the page name from the GitHub wiki link
+                if (preg_match('#/wiki/([^/]+)$#', $url, $urlMatch)) {
+                    $pageName = $urlMatch[1];
+                    if ($currentSection) {
+                        $sections[$currentSection][] = [
+                            'name' => $pageName,
+                            'title' => $title,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $sections;
+    }
+
+    public function getCombinedSidebarSections(): array {
+        $sidebar = $this->fetchSidebarSections(); // structured by section
+        $allPages = $this->getWikiPagesList();    // flat list of all valid pages
+
+        $usedNames = [];
+        foreach ($sidebar as $section) {
+            foreach ($section as $page) {
+                $usedNames[] = $page['name'];
+            }
+        }
+
+        $uncategorized = [];
+        foreach ($allPages as $page) {
+            if (!in_array($page['name'], $usedNames)) {
+                $uncategorized[] = $page;
+            }
+        }
+
+        if (!empty($uncategorized)) {
+            $sidebar['Uncategorized'] = $uncategorized;
+        }
+
+        return $sidebar;
+    }
+
+
+
+    private function prettifyTitleFromSlug(string $slug): string {
+        $title = str_replace(['-', '_'], ' ', $slug);
+        return ucwords($title);
     }
 
     public function renderMarkdown($markdown) {
@@ -633,29 +697,17 @@ foreach ($pages as $page) {
             <h3>📚 Wiki Pages</h3>
             <ul class="wiki-nav">
                 <?php
-                $sections = [
-                    'Main' => ['Home'],
-                    'General' => ['Modding-Discords', 'Xbox-Compatible-Mods'],
-                    'Troubleshooting' => ['Server-Troubleshooting', 'Client-Troubleshooting'],
-                    'Getting Started' => ['Getting-Started-Creating-Mods', 'Setting-Up-Mod-Development-Environment', 'Creating-Your-First-Mod', 'Best-Practices', 'Valheim-Unity-Project-Guide'],
-                    'Advanced' => ['Advanced-Practices-and-Tools', 'Attaching-Weapons-and-Armor', 'Creating-Dungeons', 'Creating-Locations', 'Custom-Sounds', 'Debugging-Plugins-via-IDE', 'Replacing-Valheim-Animations', 'Profiling-Performance'],
-                    'Game Code' => ['Valheim-Event-System', 'Item-Variants', 'Key-Binding-Strings', 'Spawning', 'Snappoints'],
-                    'RPC' => ['RPC-Introduction-and-Example', 'RPC-System-Reference-Sheet', 'RPC-Version-Handshaking'],
-                    'References' => ['Layers', 'RPC-Method-Registrations', 'Wiki-Pages-&-Sites', 'ZDO-Hashes'],
-                    'MonoBehaviors' => ['MonoBehaviourRepositoryLoader', 'How-to-use-MonoBehaviors-from-Paid-AssetBundles-with-Valheim']
-                ];
+                $sections = $wiki->getCombinedSidebarSections();
 
                 foreach ($sections as $sectionName => $sectionPages) {
-                    if ($sectionName !== 'Main') {
-                        echo '<li class="section-header">' . $sectionName . '</li>';
-                    }
+                    echo '<li class="section-header">' . htmlspecialchars($sectionName) . '</li>';
 
-                    foreach ($pages as $page) {
-                        if (in_array($page['name'], $sectionPages)) {
-                            echo '<li><a href="?page=' . urlencode($page['name']) . '" class="' . ($page['name'] === $currentPage ? 'active' : '') . '">' . htmlspecialchars($page['title']) . '</a></li>';
-                        }
+                    foreach ($sectionPages as $page) {
+                        $active = ($page['name'] === $currentPage) ? 'active' : '';
+                        echo '<li><a href="?page=' . urlencode($page['name']) . '" class="' . $active . '">' . htmlspecialchars($page['title']) . '</a></li>';
                     }
                 }
+
                 ?>
             </ul>
 
