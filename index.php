@@ -279,6 +279,16 @@ catch (PDOException $e) {
 <head>
     <?php require __DIR__ . "/head.php"; ?>
     <title>Valtools</title>
+
+    <!-- Preload first few mod icons for faster initial render -->
+    <?php
+    $firstMods = array_slice($mods, 0, 6); // Preload first 6 mod icons
+    foreach ($firstMods as $mod):
+        if (!empty($mod['icon'])): ?>
+            <link rel="preload" as="image" href="<?= htmlspecialchars($mod['icon']) ?>">
+        <?php endif;
+    endforeach; ?>
+
     <style>
         .compatibility-status {
             display: inline-block;
@@ -331,6 +341,22 @@ catch (PDOException $e) {
             margin-top: 2px;
             max-width: 200px;
             word-wrap: break-word;
+        }
+
+        .icon {
+            background: #333;
+            border-radius: 3px;
+            transition: opacity 0.3s ease;
+        }
+
+        .icon[data-src] {
+            opacity: 0.7;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="%23333"/><text x="25" y="30" text-anchor="middle" fill="%23666" font-size="12">📦</text></svg>');
+            background-size: cover;
+        }
+
+        .icon.loaded {
+            opacity: 1;
         }
     </style>
 </head>
@@ -703,11 +729,38 @@ catch (PDOException $e) {
             }, 150);
 
             authorSearch.addEventListener("input", function() {
-                debouncedAuthorFilter(this.value);
+                const query = this.value.trim();
+
+                // If input is cleared, reset the author filter
+                if (query === '') {
+                    if (filterAuthor) filterAuthor.value = '';
+                    this.placeholder = "Search authors...";
+                    authorDropdown.style.display = "none";
+                    filterMods(); // Apply the filter change immediately
+                } else {
+                    debouncedAuthorFilter(query);
+                }
+            });
+
+            // Handle backspace and delete keys specifically
+            authorSearch.addEventListener("keydown", function(e) {
+                if ((e.key === 'Backspace' || e.key === 'Delete') && this.value.length <= 1) {
+                    // Will be empty after this keystroke
+                    setTimeout(() => {
+                        if (this.value.trim() === '') {
+                            if (filterAuthor) filterAuthor.value = '';
+                            this.placeholder = "Search authors...";
+                            authorDropdown.style.display = "none";
+                            filterMods();
+                        }
+                    }, 0);
+                }
             });
 
             authorSearch.addEventListener("focus", function() {
-                authorDropdown.style.display = "block";
+                if (this.value.trim() !== '') {
+                    authorDropdown.style.display = "block";
+                }
             });
 
             authorDropdown.addEventListener("click", function(e) {
@@ -716,6 +769,7 @@ catch (PDOException $e) {
                     const text = e.target.textContent;
 
                     authorSearch.value = value ? text : "";
+                    authorSearch.placeholder = value ? text : "Search authors...";
                     if (filterAuthor) filterAuthor.value = value;
                     authorDropdown.style.display = "none";
 
@@ -723,29 +777,75 @@ catch (PDOException $e) {
                 }
             });
 
+            // Handle clicking outside to close dropdown
             document.addEventListener("click", function(e) {
                 if (!e.target.closest(".author-filter-container")) {
                     authorDropdown.style.display = "none";
                 }
             });
+
+            // Handle Escape key to clear and close
+            authorSearch.addEventListener("keydown", function(e) {
+                if (e.key === 'Escape') {
+                    this.value = '';
+                    if (filterAuthor) filterAuthor.value = '';
+                    this.placeholder = "Search authors...";
+                    authorDropdown.style.display = "none";
+                    filterMods();
+                    this.blur(); // Remove focus
+                }
+            });
         }
 
-        // Lazy loading for avatars
-        const avatars = document.querySelectorAll('img[data-src]');
-        if (avatars.length > 0) {
-            const imageObserver = new IntersectionObserver((entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target;
-                        img.src = img.dataset.src;
-                        img.removeAttribute('data-src');
-                        observer.unobserve(img);
-                    }
-                });
+        // Enhanced lazy loading for avatars and mod icons
+        // Load images that are immediately visible without waiting for intersection observer
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load images in the first few rows immediately
+            const immediateImages = document.querySelectorAll('#tableView tbody tr:nth-child(-n+5) img[data-src]');
+            immediateImages.forEach(img => {
+                const newImg = new Image();
+                newImg.onload = function() {
+                    img.src = img.dataset.src;
+                    img.classList.add('loaded');
+                    img.removeAttribute('data-src');
+                };
+                newImg.src = img.dataset.src;
             });
 
-            avatars.forEach(img => imageObserver.observe(img));
-        }
+            // Then set up lazy loading for the rest
+            const images = document.querySelectorAll('img[data-src]');
+            if (images.length > 0) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+
+                            // Create a new image to preload
+                            const newImg = new Image();
+                            newImg.onload = function() {
+                                img.src = img.dataset.src;
+                                img.classList.add('loaded');
+                                img.removeAttribute('data-src');
+                                observer.unobserve(img);
+                            };
+                            newImg.onerror = function() {
+                                // Fallback for broken images
+                                img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="%23333"/><text x="25" y="30" text-anchor="middle" fill="%23666" font-size="12">❌</text></svg>';
+                                img.classList.add('loaded');
+                                img.removeAttribute('data-src');
+                                observer.unobserve(img);
+                            };
+                            newImg.src = img.dataset.src;
+                        }
+                    });
+                }, {
+                    rootMargin: '100px', // Start loading 100px before image comes into view
+                    threshold: 0.1
+                });
+
+                images.forEach(img => imageObserver.observe(img));
+            }
+        });
     });
 </script>
 <main>
@@ -1117,5 +1217,5 @@ Please only report objective things, not your personal opinion of this mod." req
 
 </main>
 <?php require __DIR__ . "/footer.php"; ?>
-</body>
-</html>
+</body>echo $imageData;
+?></html>
