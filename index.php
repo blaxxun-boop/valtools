@@ -142,6 +142,7 @@ try {
 			m.updated,
 			m.deprecated,
 			m.packageurl,
+			m.icon,
 			m.author_modpage,
 			GROUP_CONCAT(
 				CONCAT(
@@ -176,6 +177,7 @@ try {
 			m.updated,
 			m.deprecated,
 			m.packageurl,
+			m.icon,
 			m.author_modpage,
 			GROUP_CONCAT(
 				CONCAT(
@@ -213,6 +215,7 @@ try {
             'comments' => [],
             'deprecated' => $row['deprecated'],
             'packageurl' => $row['packageurl'],
+            'icon' => $row['icon'],
             'author_modpage' => $row['author_modpage'],
         ];
 
@@ -822,7 +825,9 @@ Please only report objective things, not your personal opinion of this mod." req
                     <tr>
                         <td class="mod_author"><a href="<?=  $mod['author_modpage'] ?>" target="_blank"><?= htmlspecialchars($mod['author']) ?></a></td>
                         <!--<td class="mod_name"><?php /*= htmlspecialchars($mod['name']) */?></td>-->
-                        <td class="mod_name"><a href="<?= $mod['packageurl'] ?>" target="_blank"><?= htmlspecialchars($mod['name']) ?></a>
+                        <td class="mod_name">
+
+                            <a href="<?= $mod['packageurl'] ?>" target="_blank"><img src="<?= $mod['icon'] ?>" alt="Icon" class="icon" width="50" height="50"> <br><?= htmlspecialchars($mod['name']) ?></a>
                             <?php if ($mod['deprecated'] == 1): ?>
                                 <span class="incompatibility-badge incompatibility-full">Deprecated</span>
                             <?php endif; ?>

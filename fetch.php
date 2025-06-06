@@ -39,12 +39,13 @@ foreach ($mods as $mod) {
     $packageUrl = $mod->package_url;
     $authorModpage = 'https://thunderstore.io/c/valheim/p/' . $mod->owner;
     $version = $mod->versions[0]->version_number;
+    $icon = $mod->versions[0]->icon;
     $last_updated = strtotime($mod->versions[0]->date_created);
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO mods (author, name, deprecated, packageurl, author_modpage, version, updated) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE version = VALUES(version), updated = VALUES(updated), packageurl = VALUES(packageurl), author_modpage = VALUES(author_modpage), deprecated = VALUES(deprecated)");
+        $stmt = $pdo->prepare("INSERT INTO mods (author, name, deprecated, packageurl, author_modpage, version, icon, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE version = VALUES(version), updated = VALUES(updated), packageurl = VALUES(packageurl), author_modpage = VALUES(author_modpage), deprecated = VALUES(deprecated), icon = VALUES(icon)");
 
-        $result = $stmt->execute([$author, $name, $isDeprecated, $packageUrl, $authorModpage, $version, $last_updated]);
+        $result = $stmt->execute([$author, $name, $isDeprecated, $packageUrl, $authorModpage, $version, $icon, $last_updated]);
 
         if ($result) {
             ++$processed;
