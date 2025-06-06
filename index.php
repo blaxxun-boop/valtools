@@ -1217,5 +1217,5 @@ Please only report objective things, not your personal opinion of this mod." req
 
 </main>
 <?php require __DIR__ . "/footer.php"; ?>
-</body>echo $imageData;
-?></html>
+</body>
+</html>
