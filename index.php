@@ -1118,6 +1118,4 @@ Please only report objective things, not your personal opinion of this mod." req
 </main>
 <?php require __DIR__ . "/footer.php"; ?>
 </body>
-</html>equire __DIR__ . "/footer.php"; ?>
-</body>
 </html>
