@@ -126,10 +126,20 @@ if (($_GET["commented"] ?? "") == "success") {
     $success_message = "Comment submitted successfully and is pending approval.";
 }
 
+// Get the latest game version for compatibility checking
+$latest_game_version = null;
+try {
+    $stmt = $pdo->prepare("SELECT version FROM valheim_updates WHERE version IS NOT NULL AND version != '' ORDER BY published_at DESC LIMIT 1");
+    $stmt->execute();
+    $latest_game_version = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    // Fallback - continue without compatibility info
+}
+
 // Check if we should show only pending comments
 $show_pending_only = isset($_GET['pending_only']) && $_GET['pending_only'] === '1' && hasPermission("modcomments");
 
-// Fetch mods data with latest approved comment or pending comments
+// Fetch mods data with latest approved comment or pending comments AND compatibility info
 $mods = [];
 try {
     if ($show_pending_only) {
@@ -144,6 +154,9 @@ try {
 			m.packageurl,
 			m.icon,
 			m.author_modpage,
+			mc.status as compatibility_status,
+			mc.notes as compatibility_notes,
+			mc.tested_date as compatibility_tested_date,
 			GROUP_CONCAT(
 				CONCAT(
 					c.id, '\t',
@@ -162,13 +175,17 @@ try {
 			) as comments_data
 		FROM mods m
 		INNER JOIN comments c ON m.author = c.mod_author AND m.name = c.mod_name
+		LEFT JOIN mod_compatibility mc ON m.author = mc.mod_author 
+		    AND m.name = mc.mod_name 
+		    AND mc.game_version = ?
 		WHERE c.approved = 0
-		GROUP BY m.author, m.name, m.version, m.updated
+		GROUP BY m.author, m.name, m.version, m.updated, mc.status, mc.notes, mc.tested_date
 		ORDER BY MAX(c.comment_time) DESC
 	");
+        $stmt->execute([$latest_game_version]);
     }
     else {
-        // All mods with their comments grouped
+        // All mods with their comments grouped AND compatibility info
         $stmt = $pdo->prepare("
 		SELECT 
 			m.author, 
@@ -179,6 +196,9 @@ try {
 			m.packageurl,
 			m.icon,
 			m.author_modpage,
+			mc.status as compatibility_status,
+			mc.notes as compatibility_notes,
+			mc.tested_date as compatibility_tested_date,
 			GROUP_CONCAT(
 				CONCAT(
 					COALESCE(c.id, ''), '\t',
@@ -197,11 +217,14 @@ try {
 			) as comments_data
 		FROM mods m
 		LEFT JOIN comments c ON m.author = c.mod_author AND m.name = c.mod_name
-		GROUP BY m.author, m.name, m.version, m.updated
+		LEFT JOIN mod_compatibility mc ON m.author = mc.mod_author 
+		    AND m.name = mc.mod_name 
+		    AND mc.game_version = ?
+		GROUP BY m.author, m.name, m.version, m.updated, mc.status, mc.notes, mc.tested_date
 		ORDER BY m.updated DESC
 	");
+        $stmt->execute([$latest_game_version]);
     }
-    $stmt->execute();
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Process the grouped comments
@@ -217,6 +240,9 @@ try {
             'packageurl' => $row['packageurl'],
             'icon' => $row['icon'],
             'author_modpage' => $row['author_modpage'],
+            'compatibility_status' => $row['compatibility_status'],
+            'compatibility_notes' => $row['compatibility_notes'],
+            'compatibility_tested_date' => $row['compatibility_tested_date'],
         ];
 
         if (!empty($row['comments_data'])) {
@@ -253,10 +279,68 @@ catch (PDOException $e) {
 <head>
     <?php require __DIR__ . "/head.php"; ?>
     <title>Valtools</title>
+    <style>
+        .compatibility-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: white;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .compatibility-compatible {
+            background-color: #28a745;
+        }
+
+        .compatibility-incompatible {
+            background-color: #dc3545;
+        }
+
+        .compatibility-partial {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .compatibility-untested {
+            background-color: #6c757d;
+        }
+
+        .compatibility-pending {
+            background-color: #17a2b8;
+        }
+
+        .compatibility-unknown {
+            background-color: #6c757d;
+        }
+
+        .compatibility-info {
+            font-size: 0.7em;
+            color: #999;
+            margin-top: 2px;
+            display: block;
+        }
+
+        .compatibility-notes {
+            font-size: 0.7em;
+            color: #ccc;
+            font-style: italic;
+            margin-top: 2px;
+            max-width: 200px;
+            word-wrap: break-word;
+        }
+    </style>
 </head>
 <body class="table-view">
 <?php require __DIR__ . "/topnav.php"; ?>
 <script>
+    // Global variables for performance
+    let modsCache = [];
+    let isInitialized = false;
+
     function toggleCommentForm(previous) {
         const form = document.comment_form;
         if (form.style.display === 'none' || form.style.display === '' || form.previousElementSibling != previous) {
@@ -264,15 +348,36 @@ catch (PDOException $e) {
         } else {
             form.style.display = 'none';
         }
-        form.mod_author.value = previous.parentNode.parentNode.getElementsByClassName("mod_author")[0].innerText;
-        form.mod_name.value = previous.parentNode.parentNode.getElementsByClassName("mod_name")[0].innerText;
+
+        // Get the table row
+        const row = previous.closest('tr');
+
+        // Extract author from first cell - handle the link
+        const authorCell = row.children[0];
+        const authorLink = authorCell.querySelector('a');
+        const authorText = authorLink ? authorLink.textContent.trim() : authorCell.textContent.trim();
+
+        // Extract mod name from second cell - handle the complex structure
+        const modNameCell = row.children[1];
+        const modNameLink = modNameCell.querySelector('a');
+        let modNameText = '';
+
+        if (modNameLink) {
+            // Get the text content and clean it up
+            const fullText = modNameLink.textContent.trim();
+            // The mod name should be the text content after removing extra whitespace
+            modNameText = fullText.replace(/\s+/g, ' ').trim();
+        } else {
+            modNameText = modNameCell.textContent.trim();
+        }
+
+        form.mod_author.value = authorText;
+        form.mod_name.value = modNameText;
         previous.after(form);
     }
 
     function toggleView() {
         const body = document.body;
-        const table = document.getElementById('tableView');
-        //const cards = document.getElementById('cardView');
         const button = document.getElementById('viewLabel');
 
         const isTable = body.classList.toggle('table-view');
@@ -281,6 +386,7 @@ catch (PDOException $e) {
         button.textContent = isTable ? 'Switch to Card View' : 'Switch to Table View';
     }
 
+    // Initialize view toggle button
     (function () {
         const toggle = document.createElement('button');
         toggle.textContent = 'Switch to Card View';
@@ -289,46 +395,96 @@ catch (PDOException $e) {
         toggle.onclick = toggleView;
 
         const nav = document.querySelector("nav");
-        nav.lastElementChild.previousElementSibling.after(toggle);
+        if (nav && nav.lastElementChild && nav.lastElementChild.previousElementSibling) {
+            nav.lastElementChild.previousElementSibling.after(toggle);
+        }
     })();
 
-    function filterMods() {
-        const query = document.getElementById("modSearch").value.toLowerCase();
-        const status = document.getElementById("filterCompatibility").value;
-        const author = document.getElementById("filterAuthor").value;
-        const showDeprecated = document.getElementById("showDeprecatedFilter").checked;
+    // Debounce function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Initialize mod data cache
+    function initializeModsCache() {
+        if (isInitialized) return;
 
         const rows = document.querySelectorAll("#tableView tbody tr");
+        modsCache = Array.from(rows).map(row => {
+            const modNameCell = row.children[1];
+            const modAuthorCell = row.children[0];
+            const compatibilityCell = row.children[4];
 
-        function matches(modName, modAuthor, modStatus, isDeprecated) {
-            return (
-                (!query || modName.toLowerCase().includes(query)) &&
-                (!status || modStatus === status) &&
-                (!author || modAuthor === author) &&
-                (showDeprecated || !isDeprecated)
-            );
-        }
+            // Extract text content properly
+            const modName = modNameCell ? modNameCell.textContent.trim().toLowerCase() : '';
+            const modAuthor = modAuthorCell ? modAuthorCell.textContent.trim().toLowerCase() : '';
 
-        rows.forEach(row => {
-            const modName = row.children[1]?.innerText || '';
-            const modAuthor = row.children[0]?.innerText || '';
-            const statusSpan = row.querySelector(".comment-approved, .comment-pending");
-            const modStatus = row.querySelector(".status")?.classList.contains('compatible') ? 'compatible' :
-                row.querySelector(".status")?.classList.contains('incompatible') ? 'incompatible' : 'unknown';
+            // Get compatibility status
+            let modStatus = 'unknown';
+            if (compatibilityCell) {
+                const statusElement = compatibilityCell.querySelector('.compatibility-status');
+                if (statusElement) {
+                    if (statusElement.classList.contains('compatibility-compatible')) modStatus = 'compatible';
+                    else if (statusElement.classList.contains('compatibility-incompatible')) modStatus = 'incompatible';
+                    else if (statusElement.classList.contains('compatibility-partial')) modStatus = 'partial';
+                    else if (statusElement.classList.contains('compatibility-untested')) modStatus = 'untested';
+                    else if (statusElement.classList.contains('compatibility-pending')) modStatus = 'pending';
+                }
+            }
+
+            // Check if deprecated
             const deprecatedBadge = row.querySelector(".incompatibility-badge");
             const isDeprecated = deprecatedBadge && deprecatedBadge.textContent.trim() === "Deprecated";
 
-            row.style.display = matches(modName, modAuthor, modStatus, isDeprecated) ? '' : 'none';
+            return {
+                row: row,
+                modName: modName,
+                modAuthor: modAuthor,
+                modStatus: modStatus,
+                isDeprecated: isDeprecated
+            };
+        });
+
+        isInitialized = true;
+    }
+
+    // Main filter function
+    function filterMods() {
+        if (!isInitialized) {
+            initializeModsCache();
+        }
+
+        const searchInput = document.getElementById("modSearch");
+        const statusSelect = document.getElementById("filterCompatibility");
+        const authorSelect = document.getElementById("filterAuthor");
+        const deprecatedCheckbox = document.getElementById("showDeprecatedFilter");
+
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const status = statusSelect ? statusSelect.value : '';
+        const author = authorSelect ? authorSelect.value.toLowerCase() : '';
+        const showDeprecated = deprecatedCheckbox ? deprecatedCheckbox.checked : false;
+
+        modsCache.forEach(mod => {
+            const matchesSearch = !query || mod.modName.includes(query) || mod.modAuthor.includes(query);
+            const matchesStatus = !status || mod.modStatus === status;
+            const matchesAuthor = !author || mod.modAuthor.includes(author);
+            const matchesDeprecated = showDeprecated || !mod.isDeprecated;
+
+            const shouldShow = matchesSearch && matchesStatus && matchesAuthor && matchesDeprecated;
+            mod.row.style.display = shouldShow ? '' : 'none';
         });
     }
 
-
-    document.addEventListener("DOMContentLoaded", () => {
-        toggleDeprecatedFilter(false);
-        document.getElementById("modSearch").addEventListener("input", filterMods);
-        document.getElementById("filterCompatibility").addEventListener("change", filterMods);
-        document.getElementById("filterAuthor").addEventListener("change", filterMods);
-    });
+    // Debounced version for search input
+    const debouncedFilter = debounce(filterMods, 200);
 
     function togglePendingFilter(checked) {
         const url = new URL(window.location);
@@ -341,56 +497,40 @@ catch (PDOException $e) {
     }
 
     function toggleDeprecatedFilter(checked) {
-        const rows = document.querySelectorAll("#tableView tbody tr");
-        const cards = document.querySelectorAll("#cardView .card");
-
-        rows.forEach(row => {
-            const deprecatedBadge = row.querySelector(".incompatibility-badge");
-            const isDeprecated = deprecatedBadge && deprecatedBadge.textContent.trim() === "Deprecated";
-
-            if (isDeprecated && !checked) {
-                row.style.display = 'none';
-            } else if (isDeprecated && checked) {
-                // Just show it, don't call filterMods for each row
-                row.style.display = '';
-            }
-        });
-
-        cards.forEach(card => {
-            const deprecatedBadge = card.querySelector(".incompatibility-badge");
-            const isDeprecated = deprecatedBadge && deprecatedBadge.textContent.trim() === "Deprecated";
-
-            if (isDeprecated && !checked) {
-                card.style.display = 'none';
-            } else if (isDeprecated && checked) {
-                // Just show it, don't call filterMods for each card
-                card.style.display = 'block';
-            }
-        });
-
-        // Call filterMods once at the end to apply all other filters
-        if (checked) {
-            filterMods();
-        }
+        filterMods(); // Just re-run the main filter
     }
-
 
     // Autocomplete functionality
     function setupAutocomplete(inputId) {
         const input = document.getElementById(inputId);
+        if (!input) return;
+
         const container = input.parentElement;
         let suggestionsDiv = container.querySelector('.autocomplete-suggestions');
 
         if (!suggestionsDiv) {
             suggestionsDiv = document.createElement('div');
             suggestionsDiv.className = 'autocomplete-suggestions';
+            suggestionsDiv.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #1e1e1e;
+                border: 1px solid #555;
+                border-radius: 3px;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+            `;
+            container.style.position = 'relative';
             container.appendChild(suggestionsDiv);
         }
 
         let selectedIndex = -1;
 
-        input.addEventListener('input', function() {
-            const query = this.value.trim();
+        const debouncedAutocomplete = debounce(function(query) {
             if (query.length < 2) {
                 suggestionsDiv.style.display = 'none';
                 return;
@@ -401,13 +541,25 @@ catch (PDOException $e) {
                 .then(data => {
                     suggestionsDiv.innerHTML = '';
                     if (data.length > 0) {
-                        data.forEach((mod, index) => {
+                        data.forEach((mod) => {
                             const div = document.createElement('div');
                             div.className = 'autocomplete-suggestion';
+                            div.style.cssText = `
+                                padding: 8px 12px;
+                                cursor: pointer;
+                                color: #fff;
+                                border-bottom: 1px solid #333;
+                            `;
                             div.textContent = `${mod.author} - ${mod.name}`;
                             div.addEventListener('click', function() {
                                 selectMod(mod);
                                 suggestionsDiv.style.display = 'none';
+                            });
+                            div.addEventListener('mouseenter', function() {
+                                this.style.backgroundColor = '#333';
+                            });
+                            div.addEventListener('mouseleave', function() {
+                                this.style.backgroundColor = '';
                             });
                             suggestionsDiv.appendChild(div);
                         });
@@ -416,7 +568,15 @@ catch (PDOException $e) {
                     } else {
                         suggestionsDiv.style.display = 'none';
                     }
+                })
+                .catch(error => {
+                    console.error('Autocomplete error:', error);
+                    suggestionsDiv.style.display = 'none';
                 });
+        }, 300);
+
+        input.addEventListener('input', function() {
+            debouncedAutocomplete(this.value.trim());
         });
 
         input.addEventListener('keydown', function(e) {
@@ -440,7 +600,11 @@ catch (PDOException $e) {
 
         function updateSelection(suggestions) {
             suggestions.forEach((s, i) => {
-                s.classList.toggle('selected', i === selectedIndex);
+                if (i === selectedIndex) {
+                    s.style.backgroundColor = '#007acc';
+                } else {
+                    s.style.backgroundColor = '';
+                }
             });
         }
 
@@ -452,135 +616,137 @@ catch (PDOException $e) {
     }
 
     function selectMod(mod) {
-        document.getElementById(`incompatible_mod_search`).value = `${mod.author} - ${mod.name}`;
-        document.getElementById(`incompatible_mod_author`).value = mod.author;
-        document.getElementById(`incompatible_mod_name`).value = mod.name;
+        const searchInput = document.getElementById('incompatible_mod_search');
+        const authorInput = document.getElementById('incompatible_mod_author');
+        const nameInput = document.getElementById('incompatible_mod_name');
+
+        if (searchInput) searchInput.value = `${mod.author} - ${mod.name}`;
+        if (authorInput) authorInput.value = mod.author;
+        if (nameInput) nameInput.value = mod.name;
     }
 
     function toggleIncompatibilitySection() {
-        const checkbox = document.getElementById(`has_incompatibility`);
-        const section = document.getElementById(`incompatibility_section`);
+        const checkbox = document.getElementById('has_incompatibility');
+        const section = document.getElementById('incompatibility_section');
+
+        if (!checkbox || !section) return;
+
         section.style.display = checkbox.checked ? 'block' : 'none';
 
         if (!checkbox.checked) {
-            // Clear incompatibility fields
             const form = section.closest('form');
-            let incompatibility_box = form.querySelector(`input[name="incompatibility"]:checked`);
-            if (incompatibility_box) {
-                incompatibility_box.checked = false;
+            if (form) {
+                const incompatibilityRadios = form.querySelectorAll('input[name="incompatibility"]');
+                incompatibilityRadios.forEach(radio => radio.checked = false);
+
+                const authorField = form.querySelector('input[name="incompatible_mod_author"]');
+                const nameField = form.querySelector('input[name="incompatible_mod_name"]');
+                const searchField = form.querySelector('input[id*="incompatible_mod_search"]');
+
+                if (authorField) authorField.value = '';
+                if (nameField) nameField.value = '';
+                if (searchField) searchField.value = '';
             }
-            form.querySelector(`input[name="incompatible_mod_author"]`).value = '';
-            form.querySelector(`input[name="incompatible_mod_name"]`).value = '';
-            form.querySelector(`input[id*="incompatible_mod_search"]`).value = '';
         }
     }
 
+    // Initialize everything when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-        const avatars = document.querySelectorAll('img[data-src]');
+        // Initialize the mod cache
+        initializeModsCache();
 
-        const imageObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src;
-                    img.removeAttribute('data-src');
-                    observer.unobserve(img);
-                }
+        // Set up search input
+        const modSearch = document.getElementById("modSearch");
+        if (modSearch) {
+            modSearch.addEventListener("input", debouncedFilter);
+        }
+
+        // Set up compatibility filter
+        const filterCompatibility = document.getElementById("filterCompatibility");
+        if (filterCompatibility) {
+            filterCompatibility.addEventListener("change", filterMods);
+        }
+
+        // Set up author filter
+        const filterAuthor = document.getElementById("filterAuthor");
+        if (filterAuthor) {
+            filterAuthor.addEventListener("change", filterMods);
+        }
+
+        // Set up deprecated filter
+        const showDeprecatedFilter = document.getElementById("showDeprecatedFilter");
+        if (showDeprecatedFilter) {
+            showDeprecatedFilter.addEventListener("change", function() {
+                toggleDeprecatedFilter(this.checked);
             });
-        });
+            // Initialize with deprecated hidden
+            toggleDeprecatedFilter(false);
+        }
 
-        avatars.forEach(img => imageObserver.observe(img));
-    });
-
-    document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("modSearch").addEventListener("input", filterMods);
-        document.getElementById("filterCompatibility").addEventListener("change", filterMods);
-
-        // Author filter with search functionality
+        // Author search dropdown functionality
         const authorSearch = document.getElementById("authorSearch");
         const authorDropdown = document.getElementById("authorDropdown");
-        const filterAuthor = document.getElementById("filterAuthor");
-        let selectedAuthor = "";
 
-        authorSearch.addEventListener("input", function() {
-            const query = this.value.toLowerCase();
-            const options = authorDropdown.querySelectorAll(".author-option");
-            let hasVisibleOptions = false;
+        if (authorSearch && authorDropdown) {
+            const debouncedAuthorFilter = debounce(function(query) {
+                const options = authorDropdown.querySelectorAll(".author-option");
+                let hasVisible = false;
 
-            options.forEach(option => {
-                const text = option.textContent.toLowerCase();
-                const matches = text.includes(query);
-                option.style.display = matches ? "block" : "none";
-                if (matches) hasVisibleOptions = true;
+                options.forEach(option => {
+                    const text = option.textContent.toLowerCase();
+                    const matches = text.includes(query.toLowerCase());
+                    option.style.display = matches ? "block" : "none";
+                    if (matches) hasVisible = true;
+                });
+
+                authorDropdown.style.display = hasVisible ? "block" : "none";
+            }, 150);
+
+            authorSearch.addEventListener("input", function() {
+                debouncedAuthorFilter(this.value);
             });
 
-            authorDropdown.style.display = hasVisibleOptions ? "block" : "none";
-        });
-
-        authorSearch.addEventListener("focus", function() {
-            authorDropdown.style.display = "block";
-        });
-
-        authorDropdown.addEventListener("click", function(e) {
-            if (e.target.classList.contains("author-option")) {
-                const value = e.target.dataset.value;
-                const text = e.target.textContent;
-
-                selectedAuthor = value;
-                authorSearch.value = value ? text : "";
-                authorSearch.placeholder = value ? text : "Search authors...";
-                filterAuthor.value = value;
-                authorDropdown.style.display = "none";
-
-                filterMods();
-            }
-        });
-
-        document.addEventListener("click", function(e) {
-            if (!e.target.closest(".author-filter-container")) {
-                authorDropdown.style.display = "none";
-            }
-        });
-
-        // Update filterMods function to use the hidden select
-        window.filterMods = function() {
-            const query = document.getElementById("modSearch").value.toLowerCase();
-            const status = document.getElementById("filterCompatibility").value;
-            const author = document.getElementById("filterAuthor").value;
-
-            const rows = document.querySelectorAll("#tableView tbody tr");
-            const cards = document.querySelectorAll("#cardView .card");
-
-            function matches(modName, modAuthor, modStatus) {
-                return (
-                    (!query || modName.toLowerCase().includes(query)) &&
-                    (!status || modStatus === status) &&
-                    (!author || modAuthor === author)
-                );
-            }
-
-            rows.forEach(row => {
-                const modName = row.children[1]?.textContent || '';
-                const modAuthor = row.children[0]?.textContent || '';
-                const statusSpan = row.querySelector(".comment-approved, .comment-pending");
-                const modStatus = row.querySelector(".status")?.classList.contains('compatible') ? 'compatible' :
-                    row.querySelector(".status")?.classList.contains('incompatible') ? 'incompatible' : 'unknown';
-
-                row.style.display = matches(modName, modAuthor, modStatus) ? '' : 'none';
+            authorSearch.addEventListener("focus", function() {
+                authorDropdown.style.display = "block";
             });
 
-            cards.forEach(card => {
-                const modName = card.querySelector("h2")?.textContent || '';
-                const modAuthor = card.querySelector(".author")?.textContent || '';
-                const statusDiv = card.querySelector(".status");
-                const modStatus = statusDiv?.classList.contains("compatible") ? "compatible" :
-                    statusDiv?.classList.contains("incompatible") ? "incompatible" : "unknown";
+            authorDropdown.addEventListener("click", function(e) {
+                if (e.target.classList.contains("author-option")) {
+                    const value = e.target.dataset.value;
+                    const text = e.target.textContent;
 
-                card.style.display = matches(modName, modAuthor, modStatus) ? 'block' : 'none';
+                    authorSearch.value = value ? text : "";
+                    if (filterAuthor) filterAuthor.value = value;
+                    authorDropdown.style.display = "none";
+
+                    filterMods();
+                }
             });
-        };
+
+            document.addEventListener("click", function(e) {
+                if (!e.target.closest(".author-filter-container")) {
+                    authorDropdown.style.display = "none";
+                }
+            });
+        }
+
+        // Lazy loading for avatars
+        const avatars = document.querySelectorAll('img[data-src]');
+        if (avatars.length > 0) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.dataset.src;
+                        img.removeAttribute('data-src');
+                        observer.unobserve(img);
+                    }
+                });
+            });
+
+            avatars.forEach(img => imageObserver.observe(img));
+        }
     });
-
 </script>
 <main>
     <form method="POST" name="comment_form" class="comment-form">
@@ -631,6 +797,9 @@ Please only report objective things, not your personal opinion of this mod." req
             <option value="">All Statuses</option>
             <option value="compatible">Compatible</option>
             <option value="incompatible">Incompatible</option>
+            <option value="partial">Partial/Issues</option>
+            <option value="untested">Untested</option>
+            <option value="pending">Pending</option>
             <option value="unknown">Unknown</option>
         </select>
 
@@ -762,12 +931,12 @@ Please only report objective things, not your personal opinion of this mod." req
                 flex-basis: 100%;
             }
             .card-view #tableView td:nth-child(5):empty::after {
-                content: "No compatibility issues";
+                content: "No compatibility information";
                 font-style: italic;
             }
             .card-view #tableView td:nth-child(5)::before {
                 display: block;
-                content: "Incompatible Mods";
+                content: "Compatibility Status";
                 font-size: 1.2em;
                 font-weight: bold;
             }
@@ -816,7 +985,7 @@ Please only report objective things, not your personal opinion of this mod." req
                     <th>
                         <a href="#" class="sortlink">Last Updated</a>
                     </th>
-                    <th>Compatibility</th>
+                    <th>Compatibility <?= $latest_game_version ? '(' . htmlspecialchars($latest_game_version) . ')' : '' ?></th>
                     <th>Comments</th>
                 </tr>
                 </thead>
@@ -824,22 +993,36 @@ Please only report objective things, not your personal opinion of this mod." req
                 <?php foreach ($mods as $index => $mod): ?>
                     <tr>
                         <td class="mod_author"><a href="<?=  $mod['author_modpage'] ?>" target="_blank"><?= htmlspecialchars($mod['author']) ?></a></td>
-                        <!--<td class="mod_name"><?php /*= htmlspecialchars($mod['name']) */?></td>-->
                         <td class="mod_name">
-
                             <a href="<?= $mod['packageurl'] ?>" target="_blank"><img src="<?= $mod['icon'] ?>" alt="Icon" class="icon" width="50" height="50"> <br><?= htmlspecialchars($mod['name']) ?></a>
                             <?php if ($mod['deprecated'] == 1): ?>
                                 <span class="incompatibility-badge incompatibility-full">Deprecated</span>
                             <?php endif; ?>
                         </td>
-                        <!--<td class="mod_name">
-                            <a href="modshowcase.php?author=<?php /*= urlencode($mod['author']) */?>&name=<?php /*= urlencode($mod['name']) */?>">
-                                <?php /*= htmlspecialchars($mod['name']) */?>
-                            </a>
-                        </td>-->
                         <td><?= htmlspecialchars($mod['version'] ?? 'N/A') ?></td>
                         <td><?= $mod['updated'] ? date('Y-m-d H:i', $mod['updated']) : 'N/A' ?></td>
-                        <td><!-- TODO: compatibility overview --></td>
+                        <td>
+                            <?php if ($mod['compatibility_status']): ?>
+                                <span class="compatibility-status compatibility-<?= htmlspecialchars($mod['compatibility_status']) ?>"
+                                      title="<?= htmlspecialchars($mod['compatibility_status']) ?><?= $mod['compatibility_notes'] ? ': ' . htmlspecialchars($mod['compatibility_notes']) : '' ?>">
+                                    <?= ucfirst(htmlspecialchars($mod['compatibility_status'])) ?>
+                                </span>
+                                <?php if ($mod['compatibility_tested_date']): ?>
+                                    <span class="compatibility-info">
+                                        Tested: <?= date('M j, Y', strtotime($mod['compatibility_tested_date'])) ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($mod['compatibility_notes'] && !str_contains($mod['compatibility_notes'], 'Auto-populated')): ?>
+                                    <div class="compatibility-notes">
+                                        <?= htmlspecialchars($mod['compatibility_notes']) ?>
+                                    </div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span class="compatibility-status compatibility-unknown" title="No compatibility data available">
+                                    Unknown
+                                </span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <div class="all-comments"><?php foreach ($mod['comments'] as $comment): ?>
                                     <div class="<?= $comment['approved'] ? 'comment-approved' : 'comment-pending' ?>">
@@ -913,7 +1096,8 @@ Please only report objective things, not your personal opinion of this mod." req
                                             </div>
                                         <?php endif; ?>
                                     </div>
-                                <?php endforeach; ?></div>
+                                <?php endforeach; ?>
+                            </div>
                             <?php if (hasPermission("addcomments")): ?>
                                 <button class="comment-toggle" onclick="toggleCommentForm(this)">Add Comment</button>
 
@@ -925,120 +1109,6 @@ Please only report objective things, not your personal opinion of this mod." req
 
             </table>
         </div>
-
-        <?php /*
-        <!-- Card View -->
-        <div id="cardView" class="container" style="display:none;">
-			<?php foreach ($mods as $index => $mod): ?>
-                <div class="card">
-                    <!-- HEADER: MOD NAME, AUTHOR, STATUS -->
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
-                            <h2 style="margin-bottom: 0.25em;">
-								<?= htmlspecialchars($mod['name']) ?>
-								<?= isset($mod['version']) ? '<small style="opacity:0.7;"> (v' . htmlspecialchars($mod['version']) . ')</small>' : '' ?>
-                            </h2>
-                            <div class="author" style="margin-bottom: 0.5em;">
-                                by <?= htmlspecialchars($mod['author']) ?>
-                            </div>
-                        </div>
-                        <div class="status <?= $mod['approved'] ? 'compatible' : 'incompatible' ?>">
-							<?= $mod['approved'] ? 'COMPATIBLE' : 'INCOMPATIBLE' ?>
-							<?= isset($mod['game_version']) ? '<br><small>(v' . htmlspecialchars($mod['game_version']) . ')</small>' : '' ?>
-                        </div>
-                    </div>
-
-                    <!-- INCOMPATIBLE MODS -->
-                    <section>
-                        <h3>Incompatible Mods</h3>
-                        <div class="tags">
-							<?php
-							// Example stubbed data, not sure how I want do do this shit yet
-							$incompatibles = ['EpicLoot', 'ValheimPlus', 'Any Shit Mod'];
-							foreach ($incompatibles as $tag): ?>
-                                <span class="tag"><?= htmlspecialchars($tag) ?></span>
-							<?php endforeach; ?>
-                        </div>
-                    </section>
-
-                    <!-- NOTES -->
-                    <section>
-                        <h3>Notes</h3>
-                        <p style="font-style: italic;">
-                            “<?= htmlspecialchars($mod['comment'] ?? 'No known issues reported.') ?>”</p>
-                    </section>
-
-                    <!-- COMMENTS -->
-					<?php if (!empty($mod['comment_author'])): ?>
-                        <section>
-                            <h3>COMMENTS</h3>
-                            <div style="display: flex; align-items: flex-start; gap: 1em; margin-top: 0.5em;">
-                                <img src="https://cdn.discordapp.com/avatars/<?= htmlspecialchars($mod['comment_author_id']) ?>/<?= htmlspecialchars($mod['comment_author_avatar']) ?>.png"
-                                     alt="avatar"
-                                     style="width:40px; height:40px; border-radius:50%; object-fit: cover;">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: bold;">
-										<?= htmlspecialchars($mod['comment_author']) ?>
-                                        <small style="display: block; color: var(--color-text-muted);">
-											<?= $mod['comment_date'] ? date('F j, Y', $mod['comment_date']) : 'Unknown date' ?>
-                                        </small>
-                                    </div>
-                                    <p style="margin: 0.5em 0 0 0;"><?= htmlspecialchars($mod['comment']) ?></p>
-                                </div>
-                            </div>
-                        </section>
-					<?php endif; ?>
-
-                    <!-- COMMENT FORM BUTTON -->
-                    <div style="margin-top: auto; text-align: right;">
-                        <button class="comment-toggle" onclick="toggleCommentForm('card', <?= $index ?>)">Add Comment
-                        </button>
-                    </div>
-
-                    <!-- COMMENT FORM -->
-                    <div id="comment-form-card-<?= $index ?>" class="comment-form">
-                        <form method="POST">
-                            <input type="hidden" name="mod_author" value="<?= htmlspecialchars($mod['author']) ?>">
-                            <input type="hidden" name="mod_name" value="<?= htmlspecialchars($mod['name']) ?>">
-                            <textarea name="comment" placeholder="Enter your comment for this mod..." required></textarea>
-
-                            <div style="margin-top: 10px;">
-                                <label>
-                                    <input type="checkbox" id="has_incompatibility_<?= $index ?>"
-                                           onchange="toggleIncompatibilitySection('card', <?= $index ?>)">
-                                    Report incompatibility with another mod
-                                </label>
-                            </div>
-
-                            <div id="incompatibility_section_<?= $index ?>" style="display: none; margin-top: 10px; padding: 10px; background: #2a2a2a; border-radius: 5px;">
-                                <div style="margin-bottom: 10px;">
-                                    <label>Incompatibility type:</label><br>
-                                    <label><input type="radio" name="incompatibility" value="Full"> Full incompatibility</label>
-                                    <label><input type="radio" name="incompatibility" value="Partial"> Partial incompatibility</label>
-                                </div>
-
-                                <div class="autocomplete-container">
-                                    <input type="text" id="incompatible_mod_search_<?= $index ?>"
-                                           placeholder="Search for incompatible mod..."
-                                           style="width: 100%; padding: 6px; background: #1e1e1e; color: #fff; border: 1px solid #555; border-radius: 3px;"
-                                           onfocus="setupAutocomplete('incompatible_mod_search_<?= $index ?>', <?= $index ?>)">
-                                </div>
-
-                                <input type="hidden" name="incompatible_mod_author" id="incompatible_mod_author_<?= $index ?>">
-                                <input type="hidden" name="incompatible_mod_name" id="incompatible_mod_name_<?= $index ?>">
-                            </div>
-
-                            <div style="margin-top: 10px;">
-                                <button type="submit" name="submit_comment">Submit Comment</button>
-                                <button type="button" onclick="toggleCommentForm('card', <?= $index ?>)">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-			<?php endforeach; ?>
-        </div>
- */ ?>
-
     <?php else: ?>
         <div class="bigcard">
             <p>No mods found in the database.</p>
@@ -1047,5 +1117,7 @@ Please only report objective things, not your personal opinion of this mod." req
 
 </main>
 <?php require __DIR__ . "/footer.php"; ?>
+</body>
+</html>equire __DIR__ . "/footer.php"; ?>
 </body>
 </html>
