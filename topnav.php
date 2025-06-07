@@ -2,6 +2,20 @@
     <nav>
         <?php
         $is_admin = hasPermission("users");
+        $can_moderate_comments = hasPermission("modcomments");
+
+        // Get pending comment count for notification bell
+        $pending_comment_count = 0;
+        if ($can_moderate_comments) {
+            try {
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM comments WHERE approved = 0");
+                $stmt->execute();
+                $pending_comment_count = $stmt->fetchColumn();
+            } catch (PDOException $e) {
+                // Silently fail if there's a database error
+                $pending_comment_count = 0;
+            }
+        }
         ?>
 
         <a class="nav-link" href="index.php">Home</a>
@@ -36,13 +50,23 @@
 
             <li class="nav-item">
                 <div class="dropdown" style="position: relative;">
-                    <a href="#" role="button" id="adminMenu" class="nav-link navlink-dropdown dropdown-toggle" onclick="toggleDropdown('adminMenuDropdown')">Moderation</a>
+                    <a href="#" role="button" id="adminMenu" class="nav-link navlink-dropdown dropdown-toggle" onclick="toggleDropdown('adminMenuDropdown')">
+                        Moderation
+                    </a>
                     <div class="dropdown-content" id="adminMenuDropdown" style="position: absolute; top: 100%; left: 0; z-index: 1000;">
-                        <a class="dropdown-item" href="comment_moderation.php">Comment Moderation</a>
+                        <a class="dropdown-item notification-item" href="comment_moderation.php">
+                            Comment Moderation
+                            <?php if ($pending_comment_count > 0): ?>
+                                <span class="notification-badge-small"><?= $pending_comment_count > 99 ? '99+' : $pending_comment_count ?></span>
+                            <?php endif; ?>
+                        </a>
                         <a class="dropdown-item" href="manageusers.php">Manage Users</a>
                         <a class="dropdown-item" href="clear-wiki-cache.php">Clear Wiki Cache</a>
                         <a class="dropdown-item" href="fetch.php">Fetch Mods</a>
                     </div>
+                    <?php if ($pending_comment_count > 0): ?>
+                        <span class="notification-dot"></span>
+                    <?php endif; ?>
                 </div>
             </li>
         <?php endif; ?>
@@ -74,6 +98,65 @@
         <?php endif; ?>
     </nav>
 </header>
+
+<style>
+/* Notification dot for the Moderation dropdown toggle */
+.notification-dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background-color: #dc3545;
+    border-radius: 50%;
+    border: 2px solid white;
+    animation: pulse 2s infinite;
+}
+
+/* Small notification badge for dropdown items */
+.notification-item {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notification-badge-small {
+    background-color: #dc3545;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 0.7em;
+    font-weight: bold;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin-left: 8px;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Ensure dropdown toggle has relative positioning for the notification dot */
+.navlink-dropdown {
+    position: relative;
+}
+</style>
 
 <script>
     function toggleDropdown(id) {

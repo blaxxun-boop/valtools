@@ -37,7 +37,7 @@ if ($oauth->isRedirected()) {
 	}
 }
 elseif (isset($_GET["redirect"])) {
-	$oauth->startRedirection(["identify", "guilds", "guilds.members.read"]);
+	$oauth->startRedirection(["identify", "guilds.members.read"]);
 }
 
 ?>

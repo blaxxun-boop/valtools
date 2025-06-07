@@ -120,7 +120,7 @@ $status_options = ['compatible', 'incompatible', 'partial', 'untested', 'pending
         }
 
         .compatibility-filters > div {
-            flex: 1;
+            flex: auto;
             min-width: 150px;
             display: flex;
             flex-direction: column;

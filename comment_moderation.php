@@ -87,6 +87,57 @@ catch (PDOException $e) {
             border-bottom: 2px solid var(--color-border);
         }
 
+        .urgent-notification {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+            animation: urgentPulse 2s infinite;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .priority-notification {
+            background: linear-gradient(135deg, #ffa726, #ff9800);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(255, 167, 38, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .normal-notification {
+            background: linear-gradient(135deg, #42a5f5, #2196f3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(66, 165, 245, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @keyframes urgentPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 4px 16px rgba(255, 107, 107, 0.5);
+            }
+        }
+
         .moderation-stats {
             background: var(--color-panel);
             padding: 15px 20px;
@@ -295,7 +346,21 @@ catch (PDOException $e) {
     <div class="moderation-header">
         <h1>Comment Moderation</h1>
         <div class="moderation-stats">
-            <strong><?= count($pending_comments) ?></strong> pending comment<?= count($pending_comments) !== 1 ? 's' : '' ?>
+            <?php
+            $comment_count = count($pending_comments);
+            if ($comment_count > 10): ?>
+                <div class="urgent-notification">
+                    🚨 <?= $comment_count ?> pending comments - Urgent attention needed!
+                </div>
+            <?php elseif ($comment_count > 5): ?>
+                <div class="priority-notification">
+                    ⚠️ <?= $comment_count ?> pending comments - High priority
+                </div>
+            <?php elseif ($comment_count > 0): ?>
+                <div class="normal-notification">
+                    📝 <?= $comment_count ?> pending comment<?= $comment_count !== 1 ? 's' : '' ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
