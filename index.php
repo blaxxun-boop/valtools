@@ -175,11 +175,16 @@ try {
 			) as comments_data
 		FROM mods m
 		INNER JOIN comments c ON m.author = c.mod_author AND m.name = c.mod_name
-		LEFT JOIN mod_compatibility mc ON m.author = mc.mod_author 
+		LEFT JOIN (
+		    SELECT mod_author, mod_name, status, notes, tested_date,
+		           ROW_NUMBER() OVER (PARTITION BY mod_author, mod_name ORDER BY tested_date DESC) as rn
+		    FROM mod_compatibility 
+		    WHERE game_version = ?
+		) mc ON m.author = mc.mod_author 
 		    AND m.name = mc.mod_name 
-		    AND mc.game_version = ?
+		    AND mc.rn = 1
 		WHERE c.approved = 0
-		GROUP BY m.author, m.name, m.version, m.updated, mc.status, mc.notes, mc.tested_date
+		GROUP BY m.author, m.name, m.version, m.updated, m.deprecated, m.packageurl, m.icon, m.author_modpage, mc.status, mc.notes, mc.tested_date
 		ORDER BY MAX(c.comment_time) DESC
 	");
         $stmt->execute([$latest_game_version]);
@@ -217,10 +222,15 @@ try {
 			) as comments_data
 		FROM mods m
 		LEFT JOIN comments c ON m.author = c.mod_author AND m.name = c.mod_name
-		LEFT JOIN mod_compatibility mc ON m.author = mc.mod_author 
+		LEFT JOIN (
+		    SELECT mod_author, mod_name, status, notes, tested_date,
+		           ROW_NUMBER() OVER (PARTITION BY mod_author, mod_name ORDER BY tested_date DESC) as rn
+		    FROM mod_compatibility 
+		    WHERE game_version = ?
+		) mc ON m.author = mc.mod_author 
 		    AND m.name = mc.mod_name 
-		    AND mc.game_version = ?
-		GROUP BY m.author, m.name, m.version, m.updated, mc.status, mc.notes, mc.tested_date
+		    AND mc.rn = 1
+		GROUP BY m.author, m.name, m.version, m.updated, m.deprecated, m.packageurl, m.icon, m.author_modpage, mc.status, mc.notes, mc.tested_date
 		ORDER BY m.updated DESC
 	");
         $stmt->execute([$latest_game_version]);
@@ -282,7 +292,7 @@ catch (PDOException $e) {
 
     <!-- Preload first few mod icons for faster initial render -->
     <?php
-    $firstMods = array_slice($mods, 0, 6); // Preload first 6 mod icons
+    $firstMods = array_slice($mods, 0, 10); // Preload first 10 mod icons
     foreach ($firstMods as $mod):
         if (!empty($mod['icon'])): ?>
             <link rel="preload" as="image" href="<?= htmlspecialchars($mod['icon']) ?>">
